@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Profile & Sentiment Analyzer</title>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .loading::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.8);
+            z-index: 10;
+        }
+        .loading::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 11;
+        }
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="profileAnalyzer">
+
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+            <h1 class="text-3xl font-bold text-gray-900">Instagram Profile & Sentiment Analyzer</h1>
+            <p class="mt-2 text-gray-600">Analyze profiles and get detailed engagement insights with sentiment analysis</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <!-- Search Form -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <form @submit.prevent="analyzeProfile">
+                <div class="flex gap-4">
+                    <input 
+                        type="text" 
+                        x-model="username"
+                        class="flex-1 border border-gray-300 rounded-md px-4 py-2"
+                        placeholder="Enter Instagram username"
+                        required
+                    >
+                    <button 
+                        type="submit"
+                        class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
+                        :class="{'opacity-50 cursor-not-allowed': loading}"
+                        :disabled="loading"
+                    >
+                        <span x-text="loading ? 'Analyzing...' : 'Analyze'"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Error Message -->
+        <div 
+            x-show="error"
+            x-transition
+            class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6"
+        >
+            <span x-text="error"></span>
+        </div>
+
+        <!-- Results Section -->
+        <template x-if="profileData">
+            <div class="space-y-8">
+                <!-- Profile Overview -->
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex items-center space-x-6 mb-6">
+                            <img 
+                                :src="profileData.profile_pic" 
+                                class="w-24 h-24 rounded-full"
+                                alt="Profile Picture"
+                            >
+                            <div>
+                                <h2 class="text-2xl font-bold" x-text="profileData.username"></h2>
+                                <p class="text-gray-600" x-text="profileData.full_name"></p>
+                                <div class="mt-2 flex space-x-4">
+                                    <span class="text-sm">
+                                        <span class="font-semibold" x-text="profileData.posts_count"></span> posts
+                                    </span>
+                                    <span class="text-sm">
+                                        <span class="font-semibold" x-text="profileData.followers"></span> followers
+                                    </span>
+                                    <span class="text-sm">
+                                        <span class="font-semibold" x-text="profileData.following"></span> following
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Engagement Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h3 class="text-lg font-semibold text-blue-800">Engagement Rate</h3>
+                                <p class="text-3xl font-bold text-blue-600" x-text="profileData.engagement_rate + '%'"></p>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded-lg">
+                                <h3 class="text-lg font-semibold text-green-800">Average Likes</h3>
+                                <p class="text-3xl font-bold text-green-600" x-text="profileData.avg_likes"></p>
+                            </div>
+                            <div class="bg-purple-50 p-4 rounded-lg">
+                                <h3 class="text-lg font-semibold text-purple-800">Average Comments</h3>
+                                <p class="text-3xl font-bold text-purple-600" x-text="profileData.avg_comments"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Posts Analysis -->
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-6">Recent Posts Analysis</h3>
+                        <div class="space-y-6">
+                            <template x-for="post in profileData.recent_posts" :key="post.id">
+                                <div class="border rounded-lg p-4">
+                                    <div class="flex flex-col md:flex-row gap-4">
+                                        <img :src="post.image_url" class="w-full md:w-48 h-48 object-cover rounded-lg">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-2 mb-3">
+                                                <span 
+                                                    class="px-3 py-1 rounded-full text-sm font-medium"
+                                                    :class="{
+                                                        'bg-green-100 text-green-800': post.sentiment > 0,
+                                                        'bg-red-100 text-red-800': post.sentiment < 0,
+                                                        'bg-gray-100 text-gray-800': post.sentiment === 0
+                                                    }"
+                                                    x-text="getSentimentLabel(post.sentiment)"
+                                                ></span>
+                                                <span class="text-gray-500" x-text="formatDate(post.posted_at)"></span>
+                                            </div>
+                                            <p class="text-gray-700 mb-3" x-text="post.caption"></p>
+                                            <div class="flex gap-4">
+                                                <span class="flex items-center gap-1">
+                                                    <i class="bi bi-heart-fill text-red-500"></i>
+                                                    <span x-text="post.likes"></span>
+                                                </span>
+                                                <span class="flex items-center gap-1">
+                                                    <i class="bi bi-chat-fill text-blue-500"></i>
+                                                    <span x-text="post.comments"></span>
+                                                </span>
+                                            </div>
+                                            <div class="mt-3">
+                                                <h4 class="font-medium mb-2">Top Hashtags:</h4>
+                                                <div class="flex flex-wrap gap-2">
+                                                    <template x-for="hashtag in post.hashtags" :key="hashtag">
+                                                        <span class="bg-gray-100 px-2 py-1 rounded text-sm" x-text="'#' + hashtag"></span>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </main>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('profileAnalyzer', () => ({
+                username: '',
+                loading: false,
+                error: null,
+                profileData: null,
+                userId: localStorage.getItem('userId') || `user_${Math.random().toString(36).substr(2, 9)}`,
+
+                async analyzeProfile() {
+                    if (!this.username) return;
+                    
+                    this.loading = true;
+                    this.error = null;
+
+                    try {
+                        // Store userId if not already stored
+                        if (!localStorage.getItem('userId')) {
+                            localStorage.setItem('userId', this.userId);
+                        }
+
+                        // Get profile data
+                        const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/db', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer R7KkoKIdXqWH9sCgZ97woNW38ab2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                userId: this.userId,
+                                appSlug: 'instagram-analyzer',
+                                action: 'read',
+                                table: 'profiles',
+                                data: { username: this.username }
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+
+                        // Analyze sentiment for each post
+                        const sentimentResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/ai', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer R7KkoKIdXqWH9sCgZ97woNW38ab2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                messages: [{
+                                    role: 'user',
+                                    content: [{
+                                        type: 'text',
+                                        text: `Analyze sentiment of recent posts for Instagram user ${this.username}`
+                                    }]
+                                }]
+                            })
+                        });
+
+                        const sentimentData = await sentimentResponse.json();
+
+                        // Combine profile data with sentiment analysis
+                        this.profileData = {
+                            ...data.data[0],
+                            recent_posts: data.data[0].recent_posts.map((post, index) => ({
+                                ...post,
+                                sentiment: sentimentData.sentiments?.[index] || 0
+                            }))
+                        };
+
+                    } catch (err) {
+                        this.error = err.message || 'Failed to analyze profile. Please try again.';
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                getSentimentLabel(sentiment) {
+                    if (sentiment > 0) return 'Positive';
+                    if (sentiment < 0) return 'Negative';
+                    return 'Neutral';
+                },
+
+                formatDate(dateString) {
+                    return new Date(dateString).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                }
+            }));
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
